@@ -13,15 +13,29 @@
 #include "uart.h"
 
 #define BAUD_PRESCALE (((F_CPU / (USART_BAUDRATE * 8UL))) - 1)
-
+uint8 g_data;
 /*******************************************************************************
  *                      Functions Definitions                                  *
  *******************************************************************************/
+ISR(USART_RXC_vect)
+{
+	g_data =0;
+	g_data= UDR;
+
+}
+
+ISR(USART_UDRE_vect)
+{
+	 UDR=g_data;
+
+}
+
 void UART_init(void)
 {
 	/* U2X = 1 for double transmission speed */
 	//UCSRA = (1<<U2X);
 	SET_BIT(UCSRA,U2X);
+
 	/************************** UCSRB Description **************************
 	 * RXCIE = 0 Disable USART RX Complete Interrupt Enable
 	 * TXCIE = 0 Disable USART Tx Complete Interrupt Enable
@@ -62,11 +76,11 @@ void UART_init2(UART_ConfigType * config_ptr)
 	}
 	if ((config_ptr->mode) == interrupt )
 	{
+		SET_BIT(SREG,7);
 		SET_BIT(UCSRB,UDRIE);
 			SET_BIT(UCSRB,RXEN);
 			SET_BIT(UCSRB,TXEN);
-			SET_BIT(UCSRC,UCSZ1);
-			SET_BIT(UCSRC,UCSZ0);
+			SET_BIT(UCSRB,RXCIE);
 		}
 
 	
@@ -183,10 +197,17 @@ void UART_sendByte(const uint8 data)
 {
 	/* UDRE flag is set when the Tx buffer (UDR) is empty and ready for 
 	 * transmitting a new byte so wait until this flag is set to one */
+	if( UART_config.mode == pooling)
+	{
 	while(BIT_IS_CLEAR(UCSRA,UDRE)){}
 	/* Put the required data in the UDR register and it also clear the UDRE flag as 
 	 * the UDR register is not empty now */	 
 	UDR = data;
+	}
+	else if( UART_config.mode == interrupt)
+	{
+		SET_BIT(UCSRB,UDRIE);
+	}
 	/************************* Another Method *************************
 	UDR = data;
 	while(BIT_IS_CLEAR(UCSRA,TXC)){} // Wait until the transimission is complete TXC = 1
@@ -198,10 +219,17 @@ uint8 UART_recieveByte(void)
 {
 	/* RXC flag is set when the UART receive data so wait until this 
 	 * flag is set to one */
-	while(BIT_IS_CLEAR(UCSRA,RXC)){}
+	if( UART_config.mode == pooling)
+		{
+	while(BIT_IS_CLEAR(UCSRB,RXCIE)){}
 	/* Read the received data from the Rx buffer (UDR) and the RXC flag 
 	   will be cleared after read this data */	 
 	return UDR;
+		}
+	else if( UART_config.mode == interrupt)
+		{
+
+		}
 }
 
 void UART_sendString(const uint8 *Str)

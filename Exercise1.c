@@ -7,7 +7,7 @@
 
 #include "uart.h"
 UART_ConfigType UART_config =
-{pooling,Asynchronous_operation,One_bit,Rising_edge,Disabled,eight_bit,Double_speed
+{interrupt,Asynchronous_operation,One_bit,Rising_edge,Disabled,eight_bit,Double_speed
 
 };
 int main(void)
